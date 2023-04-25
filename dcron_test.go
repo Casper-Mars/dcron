@@ -1,14 +1,15 @@
-package dcron_test
+package dcron
 
 import (
 	"fmt"
+	"github.com/libi/dcron/node"
+	"github.com/stretchr/testify/assert"
 	"log"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/go-redis/redis/v8"
-	"github.com/libi/dcron"
 	"github.com/libi/dcron/dlog"
 	RedisDriver "github.com/libi/dcron/driver/redis"
 	"github.com/robfig/cron/v3"
@@ -41,7 +42,7 @@ func Test(t *testing.T) {
 	go runNode(t, drv)
 
 	//add recover
-	dcron2 := dcron.NewDcron("server2", drv, cron.WithChain(cron.Recover(cron.DefaultLogger)))
+	dcron2 := NewDcron("server2", drv, cron.WithChain(cron.Recover(cron.DefaultLogger)))
 	dcron2.Start()
 	dcron2.Stop()
 
@@ -71,13 +72,13 @@ func Test(t *testing.T) {
 		Log: log.New(os.Stdout, "[test_s3]", log.LstdFlags),
 	}
 	// wrap cron recover
-	rec := dcron.CronOptionChain(cron.Recover(cron.PrintfLogger(logger)))
+	rec := CronOptionChain(cron.Recover(cron.PrintfLogger(logger)))
 
 	// option test
-	dcron3 := dcron.NewDcronWithOption("server3", drv, rec,
-		dcron.WithLogger(logger),
-		dcron.WithHashReplicas(10),
-		dcron.WithNodeUpdateDuration(time.Second*10))
+	dcron3 := NewDcronWithOption("server3", drv, rec,
+		WithLogger(logger),
+		WithHashReplicas(10),
+		WithNodeUpdateDuration(time.Second*10))
 
 	//panic recover test
 	err = dcron3.AddFunc("s3 test1", "* * * * *", func() {
@@ -110,7 +111,7 @@ func Test(t *testing.T) {
 }
 
 func runNode(t *testing.T, drv *RedisDriver.Driver) {
-	dcron := dcron.NewDcron("server1", drv)
+	dcron := NewDcron("server1", drv)
 	//添加多个任务 启动多个节点时 任务会均匀分配给各个节点
 
 	err := dcron.AddFunc("s1 test1", "* * * * *", func() {
@@ -156,7 +157,7 @@ func Test_SecondsJob(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	dcr := dcron.NewDcronWithOption(t.Name(), drv, dcron.CronOptionSeconds())
+	dcr := NewDcronWithOption(t.Name(), drv, CronOptionSeconds())
 	err = dcr.AddFunc("job1", "*/5 * * * * *", func() {
 		t.Log(time.Now())
 	})
@@ -166,4 +167,51 @@ func Test_SecondsJob(t *testing.T) {
 	dcr.Start()
 	time.Sleep(15 * time.Second)
 	dcr.Stop()
+}
+
+func TestTestNamespace(t *testing.T) {
+	drv, err := RedisDriver.NewDriver(&redis.Options{
+		Addr: "127.0.0.1:6379",
+	})
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	filter := func(node *node.Node) bool {
+		return node.Namespace == "grey"
+	}
+
+	server1Result := false
+	server2Result := false
+	server3Result := false
+
+	server1 := NewDcronWithOption("testServer", drv, WithNamespace("grey"), WithNodeFilter(filter), CronOptionSeconds())
+	server2 := NewDcronWithOption("testServer", drv, WithNamespace("prod"), WithNodeFilter(filter), CronOptionSeconds())
+	server3 := NewDcronWithOption("testServer", drv, WithNamespace("prod"), WithNodeFilter(filter), CronOptionSeconds())
+
+	err = server1.AddFunc("test1", "* * * * * *", func() {
+		server1Result = true
+	})
+	assert.NoError(t, err)
+
+	err = server2.AddFunc("test1", "* * * * * *", func() {
+		server2Result = true
+	})
+	assert.NoError(t, err)
+
+	err = server3.AddFunc("test1", "* * * * * *", func() {
+		server3Result = true
+	})
+	assert.NoError(t, err)
+
+	server1.Start()
+	server2.Start()
+	server3.Start()
+
+	time.Sleep(time.Second * 10)
+
+	assert.True(t, server1Result)
+	assert.False(t, server2Result)
+	assert.False(t, server3Result)
 }
