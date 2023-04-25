@@ -2,6 +2,7 @@ package dcron
 
 import (
 	"errors"
+	"github.com/libi/dcron/node"
 	"log"
 	"os"
 	"sync"
@@ -44,6 +45,9 @@ type Dcron struct {
 	crOptions []cron.Option
 
 	RecoverFunc RecoverFuncType
+
+	namespace  string
+	nodeFilter node.Filter
 }
 
 // NewDcron create a Dcron
@@ -89,6 +93,9 @@ func newDcron(serverName string) *Dcron {
 		crOptions:          make([]cron.Option, 0),
 		nodeUpdateDuration: defaultDuration,
 		hashReplicas:       defaultReplicas,
+		nodeFilter: func(node *node.Node) bool {
+			return true
+		},
 	}
 }
 
@@ -153,7 +160,7 @@ func (d *Dcron) allowThisNodeRun(jobName string) bool {
 		d.logger.Errorf("node pool is empty")
 		return false
 	}
-	return d.nodePool.NodeID == allowRunNode
+	return d.nodePool.selfNode.ID == allowRunNode
 }
 
 // Start job
@@ -169,7 +176,7 @@ func (d *Dcron) Start() {
 			return
 		}
 		d.cr.Start()
-		d.logger.Infof("dcron started , nodeID is %s", d.nodePool.NodeID)
+		d.logger.Infof("dcron started , nodeID is %s", d.nodePool.selfNode.ID)
 	} else {
 		d.logger.Infof("dcron have started")
 	}
@@ -183,7 +190,7 @@ func (d *Dcron) Run() {
 			return
 		}
 
-		d.logger.Infof("dcron running nodeID is %s", d.nodePool.NodeID)
+		d.logger.Infof("dcron running nodeID is %s", d.nodePool.selfNode.ID)
 		d.cr.Run()
 	} else {
 		d.logger.Infof("dcron already running")

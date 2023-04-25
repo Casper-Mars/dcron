@@ -1,6 +1,7 @@
 package dcron
 
 import (
+	"github.com/libi/dcron/node"
 	"time"
 
 	"github.com/libi/dcron/dlog"
@@ -42,7 +43,7 @@ func WithHashReplicas(d int) Option {
 	}
 }
 
-//CronOptionLocation is warp cron with location
+// CronOptionLocation is warp cron with location
 func CronOptionLocation(loc *time.Location) Option {
 	return func(dcron *Dcron) {
 		f := cron.WithLocation(loc)
@@ -50,7 +51,7 @@ func CronOptionLocation(loc *time.Location) Option {
 	}
 }
 
-//CronOptionSeconds is warp cron with seconds
+// CronOptionSeconds is warp cron with seconds
 func CronOptionSeconds() Option {
 	return func(dcron *Dcron) {
 		f := cron.WithSeconds()
@@ -79,5 +80,17 @@ func CronOptionChain(wrappers ...cron.JobWrapper) Option {
 func WithRecoverFunc(recoverFunc RecoverFuncType) Option {
 	return func(dcron *Dcron) {
 		dcron.RecoverFunc = recoverFunc
+	}
+}
+
+func WithNamespace(namespace string) Option {
+	return func(dcron *Dcron) {
+		dcron.namespace = namespace
+	}
+}
+
+func WithNodeFilter(filter node.Filter) Option {
+	return func(dcron *Dcron) {
+		dcron.nodeFilter = filter
 	}
 }

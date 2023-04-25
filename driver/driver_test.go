@@ -2,6 +2,7 @@ package driver_test
 
 import (
 	"flag"
+	"github.com/libi/dcron/node"
 	"testing"
 	"time"
 
@@ -27,15 +28,17 @@ func TestRedisDriver(t *testing.T) {
 	serviceName := t.Name()
 	NewDriverFunc := func(_ int) (DcronDriver.Driver, error) {
 		driver, err := RedisDriver.NewDriver(&redis.Options{
-			Addr:     *redisAddr,
-			Password: *password,
+			Addr: "127.0.0.1:6379",
 		})
 		require.Nil(t, err)
 		require.Nil(t, driver.Ping())
 		driver.SetTimeout(5 * time.Second)
-		nodeId, err := driver.RegisterServiceNode(serviceName)
+		newNode := &node.Node{
+			ServiceName: serviceName,
+		}
+		_, err = driver.RegisterServiceNode(newNode)
 		require.Nil(t, err)
-		driver.SetHeartBeat(nodeId)
+		driver.SetHeartBeat(newNode)
 		return driver, nil
 	}
 	n := 10

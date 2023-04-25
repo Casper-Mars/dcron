@@ -1,6 +1,7 @@
 package dcron
 
 import (
+	"github.com/libi/dcron/node"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -12,7 +13,7 @@ import (
 // NodePool is a node pool
 type NodePool struct {
 	serviceName string
-	NodeID      string
+	selfNode    *node.Node
 
 	rwMut sync.RWMutex
 	nodes *consistenthash.Map
@@ -25,7 +26,13 @@ type NodePool struct {
 	dcron *Dcron
 }
 
-func newNodePool(serverName string, driver driver.Driver, dcron *Dcron, updateDuration time.Duration, hashReplicas int) (*NodePool, error) {
+func newNodePool(
+	serverName string,
+	driver driver.Driver,
+	dcron *Dcron,
+	updateDuration time.Duration,
+	hashReplicas int,
+) (*NodePool, error) {
 
 	err := driver.Ping()
 	if err != nil {
@@ -46,11 +53,15 @@ func newNodePool(serverName string, driver driver.Driver, dcron *Dcron, updateDu
 func (np *NodePool) StartPool() error {
 	var err error
 	np.Driver.SetTimeout(np.updateDuration)
-	np.NodeID, err = np.Driver.RegisterServiceNode(np.serviceName)
+	np.selfNode = &node.Node{
+		ServiceName: np.serviceName,
+		Namespace:   np.dcron.namespace,
+	}
+	_, err = np.Driver.RegisterServiceNode(np.selfNode)
 	if err != nil {
 		return err
 	}
-	np.Driver.SetHeartBeat(np.NodeID)
+	np.Driver.SetHeartBeat(np.selfNode)
 
 	err = np.updatePool()
 	if err != nil {
@@ -70,8 +81,11 @@ func (np *NodePool) updatePool() error {
 	np.rwMut.Lock()
 	defer np.rwMut.Unlock()
 	np.nodes = consistenthash.New(np.hashReplicas, np.hashFn)
-	for _, node := range nodes {
-		np.nodes.Add(node)
+	for _, item := range nodes {
+		if !np.dcron.nodeFilter(item) {
+			continue
+		}
+		np.nodes.Add(item.ID)
 	}
 	return nil
 }

@@ -1,6 +1,7 @@
 package etcd
 
 import (
+	"github.com/libi/dcron/node"
 	"testing"
 	"time"
 
@@ -26,7 +27,10 @@ func TestEtcdDriver(t *testing.T) {
 	count := 10
 
 	for i := 0; i < count; i++ {
-		nodeID, err := ed.RegisterServiceNode(serviceName)
+		testNode := &node.Node{
+			ServiceName: serviceName,
+		}
+		nodeID, err := ed.RegisterServiceNode(testNode)
 		require.Nil(t, err)
 		t.Logf("nodeId %v:%v", i, nodeID)
 		nodeMap[nodeID] = nodeID
@@ -39,7 +43,7 @@ func TestEtcdDriver(t *testing.T) {
 	require.Equal(t, count, len(list))
 
 	for _, v := range list {
-		if _, ok := nodeMap[v]; !ok {
+		if _, ok := nodeMap[v.ID]; !ok {
 			t.Errorf("nodeId %v not found!!!", v)
 		}
 	}
@@ -65,11 +69,14 @@ func TestSetHeartBeat(t *testing.T) {
 
 	//一半设置心跳
 	for i := 0; i < count; i++ {
-		nodeID, err := ed.RegisterServiceNode(serviceName)
+		testNode := &node.Node{
+			ServiceName: serviceName,
+		}
+		nodeID, err := ed.RegisterServiceNode(testNode)
 		require.Nil(t, err)
 		t.Logf("nodeId %v:%v", i, nodeID)
 		if i%2 == 0 {
-			ed.SetHeartBeat(nodeID)
+			ed.SetHeartBeat(testNode)
 			nodeMap[nodeID] = nodeID
 		}
 	}
@@ -84,7 +91,7 @@ func TestSetHeartBeat(t *testing.T) {
 	require.Equal(t, len(nodeMap), len(list))
 
 	for _, v := range list {
-		if _, ok := nodeMap[v]; !ok {
+		if _, ok := nodeMap[v.ID]; !ok {
 			t.Errorf("nodeId %v not found!!!", v)
 		}
 	}

@@ -109,7 +109,7 @@ func Test(t *testing.T) {
 	dcron3.Stop()
 }
 
-func runNode(t *testing.T, drv *RedisDriver.RedisDriver) {
+func runNode(t *testing.T, drv *RedisDriver.Driver) {
 	dcron := dcron.NewDcron("server1", drv)
 	//添加多个任务 启动多个节点时 任务会均匀分配给各个节点
 

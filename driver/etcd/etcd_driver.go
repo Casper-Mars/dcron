@@ -2,6 +2,8 @@ package etcd
 
 import (
 	"context"
+	"fmt"
+	"github.com/libi/dcron/node"
 	"log"
 	"sync"
 	"time"
@@ -30,7 +32,7 @@ type EtcdDriver struct {
 	logger     dlog.Logger
 }
 
-//NewEtcdDriver ...
+// NewEtcdDriver ...
 func NewEtcdDriver(config *clientv3.Config) (*EtcdDriver, error) {
 	cli, err := clientv3.New(*config)
 	if err != nil {
@@ -48,7 +50,7 @@ func NewEtcdDriver(config *clientv3.Config) (*EtcdDriver, error) {
 	return ser, nil
 }
 
-//设置key value，绑定租约
+// 设置key value，绑定租约
 func (s *EtcdDriver) putKeyWithLease(key, val string) (clientv3.LeaseID, error) {
 	//设置租约时间，最少5s
 	if s.lease < defaultLease {
@@ -75,7 +77,7 @@ func (s *EtcdDriver) randNodeID(serviceName string) (nodeID string) {
 	return getPrefix(serviceName) + uuid.New().String()
 }
 
-//WatchService 初始化服务列表和监视
+// WatchService 初始化服务列表和监视
 func (s *EtcdDriver) watchService(serviceName string) error {
 	prefix := getPrefix(serviceName)
 	// 根据前缀获取现有的key
@@ -119,7 +121,7 @@ func (s *EtcdDriver) setServiceList(serviceName, key, val string) {
 	defer s.lock.Unlock()
 	if _, ok := s.serverList[serviceName]; !ok {
 		nodeMap := map[string]string{
-			key: val,
+			key: key,
 		}
 		s.serverList[serviceName] = nodeMap
 	} else {
@@ -153,9 +155,13 @@ func (e *EtcdDriver) Ping() error {
 	return nil
 }
 
-func (e *EtcdDriver) keepAlive(ctx context.Context, nodeID string) (<-chan *clientv3.LeaseKeepAliveResponse, error) {
-	var err error
-	e.leaseID, err = e.putKeyWithLease(nodeID, nodeID)
+func (e *EtcdDriver) keepAlive(ctx context.Context, node *node.Node) (<-chan *clientv3.LeaseKeepAliveResponse, error) {
+	bytes, err := node.MarshalBinary()
+	if err != nil {
+		return nil, fmt.Errorf("marshal node error: %w", err)
+	}
+
+	e.leaseID, err = e.putKeyWithLease(node.ID, string(bytes))
 	if err != nil {
 		e.logger.Errorf("putKeyWithLease error: %v", err)
 		return nil, err
@@ -171,8 +177,8 @@ func (e *EtcdDriver) revoke() {
 	}
 }
 
-func (e *EtcdDriver) SetHeartBeat(nodeID string) {
-	leaseCh, err := e.keepAlive(context.Background(), nodeID)
+func (e *EtcdDriver) SetHeartBeat(node *node.Node) {
+	leaseCh, err := e.keepAlive(context.Background(), node)
 	if err != nil {
 		e.logger.Errorf("setHeartBeat error: %v", err)
 		return
@@ -190,7 +196,7 @@ func (e *EtcdDriver) SetHeartBeat(nodeID string) {
 			case _, ok := <-leaseCh:
 				if !ok {
 					e.revoke()
-					e.SetHeartBeat(nodeID)
+					e.SetHeartBeat(node)
 					return
 				}
 			case <-time.After(businessTimeout):
@@ -211,20 +217,35 @@ func (e *EtcdDriver) SetTimeout(timeout time.Duration) {
 }
 
 // GetServiceNodeList get service notes
-func (e *EtcdDriver) GetServiceNodeList(serviceName string) ([]string, error) {
-	return e.getServices(serviceName), nil
+func (e *EtcdDriver) GetServiceNodeList(serviceName string) ([]*node.Node, error) {
+	services := e.getServices(serviceName)
+	if len(services) == 0 {
+		return []*node.Node{}, nil
+	}
+	result := make([]*node.Node, len(services))
+	for i, service := range services {
+		result[i] = &node.Node{}
+		if err := result[i].UnmarshalBinary([]byte(service)); err != nil {
+			return nil, fmt.Errorf("[etcd] unmarshal node error: %w, node: %s", err, service)
+		}
+	}
+	return result, nil
 }
 
 // RegisterServiceNode register a node to service
-func (e *EtcdDriver) RegisterServiceNode(serviceName string) (string, error) {
-	nodeId := e.randNodeID(serviceName)
-	_, err := e.putKeyWithLease(nodeId, nodeId)
+func (e *EtcdDriver) RegisterServiceNode(node *node.Node) (string, error) {
+	node.ID = e.randNodeID(node.ServiceName)
+	bytes, err := node.MarshalBinary()
+	if err != nil {
+		return "", fmt.Errorf("[etcd] marshal node error: %w, node: %v", err, node)
+	}
+	_, err = e.putKeyWithLease(node.ID, string(bytes))
 	if err != nil {
 		return "", err
 	}
-	err = e.watchService(serviceName)
+	err = e.watchService(node.ServiceName)
 	if err != nil {
 		return "", err
 	}
-	return nodeId, nil
+	return node.ID, nil
 }
