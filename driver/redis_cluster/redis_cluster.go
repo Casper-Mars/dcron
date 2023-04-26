@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Casper-Mars/dcron/dlog"
+	"github.com/Casper-Mars/dcron/driver"
 	"github.com/go-redis/redis/v8"
-	"github.com/libi/dcron/dlog"
-	"github.com/libi/dcron/driver"
 )
 
 // Conf is redis cluster client config
@@ -69,12 +69,12 @@ func (rd *RedisClusterDriver) Ping() error {
 	return nil
 }
 
-//SetTimeout set redis key expiration timeout
+// SetTimeout set redis key expiration timeout
 func (rd *RedisClusterDriver) SetTimeout(timeout time.Duration) {
 	rd.timeout = timeout
 }
 
-//SetHeartBeat set heartbeat
+// SetHeartBeat set heartbeat
 func (rd *RedisClusterDriver) SetHeartBeat(nodeID string) {
 	go rd.heartBeat(nodeID)
 }
@@ -90,13 +90,13 @@ func (rd *RedisClusterDriver) heartBeat(nodeID string) {
 	}
 }
 
-//GetServiceNodeList get a service node  list on redis cluster
+// GetServiceNodeList get a service node  list on redis cluster
 func (rd *RedisClusterDriver) GetServiceNodeList(serviceName string) ([]string, error) {
 	mathStr := fmt.Sprintf("%s*", driver.GetKeyPre(serviceName))
 	return rd.scan(mathStr)
 }
 
-//RegisterServiceNode  register a service node
+// RegisterServiceNode  register a service node
 func (rd *RedisClusterDriver) RegisterServiceNode(serviceName string) (nodeID string, err error) {
 	nodeID = driver.GetNodeId(serviceName)
 	key := driver.GetKeyPre(serviceName) + nodeID
@@ -110,7 +110,8 @@ func (rd *RedisClusterDriver) SetLogger(log dlog.Logger) {
 	rd.logger = log
 }
 
-/**
+/*
+*
 集群模式下，scan命令只能在单机上执行，因此需要遍历master节点进行合并
 */
 func (rd *RedisClusterDriver) scan(matchStr string) ([]string, error) {

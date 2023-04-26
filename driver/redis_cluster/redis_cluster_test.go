@@ -3,7 +3,7 @@ package redis_cluster
 import (
 	"testing"
 
-	"github.com/libi/dcron/driver"
+	"github.com/Casper-Mars/dcron/driver"
 )
 
 func TestClusterScan(t *testing.T) {

@@ -31,20 +31,29 @@ Dcron
 
 1.安装依赖
 
-1.创建redisDriver实例，指定服务名并初始化dcron。服务名为执行相同任务的单元。
+```shell
+go get github.com/Casper-Mars/dcron
+```
+
+2.创建redisDriver实例，指定服务名并初始化dcron。服务名为执行相同任务的单元。
+
 ```golang
   drv, _ := redis.NewDriver(&redis.Options{
     Host: "127.0.0.1:6379"
   })
   dcron := NewDcron("server1", drv)
 ```
-2.使用cron语法添加任务，需要指定任务名。任务名作为任务的唯一标识，必须保证唯一。
+
+3.使用cron语法添加任务，需要指定任务名。任务名作为任务的唯一标识，必须保证唯一。
+
 ```golang
     dcron.AddFunc("test1","*/3 * * * *",func(){
 		fmt.Println("执行 test1 任务",time.Now().Format("15:04:05"))
 	})
 ```
-3.开始任务。
+
+4.开始任务。
+
 ```golang
 // 启动任务可使用 Start() 或者 Run()
 // 使用协程异步启动任务

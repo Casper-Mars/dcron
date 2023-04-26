@@ -1,13 +1,13 @@
 package dcron
 
 import (
-	"github.com/libi/dcron/node"
+	"github.com/Casper-Mars/dcron/node"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/libi/dcron/consistenthash"
-	"github.com/libi/dcron/driver"
+	"github.com/Casper-Mars/dcron/consistenthash"
+	"github.com/Casper-Mars/dcron/driver"
 )
 
 // NodePool is a node pool

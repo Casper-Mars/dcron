@@ -6,11 +6,11 @@ import (
 	"os"
 	"time"
 
+	"github.com/Casper-Mars/dcron"
+	"github.com/Casper-Mars/dcron/dlog"
+	redisDriver "github.com/Casper-Mars/dcron/driver/redis"
+	examplesCommon "github.com/Casper-Mars/dcron/examples/common"
 	"github.com/go-redis/redis/v8"
-	"github.com/libi/dcron"
-	"github.com/libi/dcron/dlog"
-	redisDriver "github.com/libi/dcron/driver/redis"
-	examplesCommon "github.com/libi/dcron/examples/common"
 )
 
 type EnvConfig struct {

@@ -1,10 +1,10 @@
 package dcron
 
 import (
-	"github.com/libi/dcron/node"
+	"github.com/Casper-Mars/dcron/node"
 	"time"
 
-	"github.com/libi/dcron/dlog"
+	"github.com/Casper-Mars/dcron/dlog"
 	"github.com/robfig/cron/v3"
 )
 

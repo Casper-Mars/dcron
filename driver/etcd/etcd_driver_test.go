@@ -1,7 +1,7 @@
 package etcd
 
 import (
-	"github.com/libi/dcron/node"
+	"github.com/Casper-Mars/dcron/node"
 	"testing"
 	"time"
 
