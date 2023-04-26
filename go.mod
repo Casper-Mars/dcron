@@ -1,4 +1,4 @@
-module github.com/libi/dcron
+module github.com/Casper-Mars/dcron
 
 go 1.16
 
